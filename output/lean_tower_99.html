@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LEAN TREE // 99 SLICES // ALL GREEN</title>
+<style>
+  :root {
+    --bg: #040a05;
+    --green: #00ff66;
+    --green2: #00ffcc;
+    --green-dim: rgba(0, 255, 102, 0.35);
+    --text: #b7ffd0;
+    --card-bg: rgba(4, 18, 9, 0.92);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); }
+  body {
+    font-family: "JetBrains Mono", "Cascadia Code", Consolas, "Courier New", monospace;
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+  canvas { display: block; }
+
+  #scanlines {
+    position: fixed; inset: 0; pointer-events: none; z-index: 5;
+    background: repeating-linear-gradient(0deg, rgba(0,255,102,0.03) 0px, rgba(0,255,102,0.03) 1px, transparent 1px, transparent 3px);
+    mix-blend-mode: screen;
+  }
+  #vignette {
+    position: fixed; inset: 0; pointer-events: none; z-index: 4;
+    background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.6) 100%);
+  }
+
+  #hud {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 22px;
+    border-bottom: 1px solid var(--green-dim);
+    background: linear-gradient(180deg, rgba(0,20,8,0.85), rgba(0,20,8,0.25));
+    text-shadow: 0 0 8px var(--green2);
+  }
+  #hud .title { font-size: 15px; letter-spacing: 3px; color: var(--green2); }
+  #hud .title b { color: #fff; }
+  #stats { font-size: 12px; letter-spacing: 1px; color: var(--text); text-align: right; line-height: 1.5; }
+  #stats .ok { color: var(--green); text-shadow: 0 0 6px var(--green); }
+
+  #legend {
+    position: fixed; left: 22px; bottom: 24px; z-index: 10;
+    background: var(--card-bg); border: 1px solid var(--green-dim);
+    padding: 12px 16px; font-size: 12px; line-height: 1.9; letter-spacing: 1px;
+    box-shadow: 0 0 18px rgba(0,255,102,0.15);
+    border-radius: 4px;
+  }
+  #legend .row { display: flex; align-items: center; gap: 10px; }
+  #legend .sw { width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 8px currentColor; }
+  #legend .sw.dark { opacity: 0.45; }
+  #legend .sw.oct { border-radius: 2px; transform: rotate(45deg); }
+  #legend .hint { color: #6fdda0; margin-top: 6px; font-size: 11px; }
+
+  #tooltip {
+    position: fixed; z-index: 20; display: none; max-width: 430px;
+    background: var(--card-bg);
+    border: 1px solid var(--green);
+    box-shadow: 0 0 24px rgba(0,255,102,0.35), inset 0 0 12px rgba(0,255,102,0.08);
+    padding: 12px 14px; font-size: 12px; line-height: 1.6; letter-spacing: 0.5px;
+    pointer-events: none; border-radius: 4px;
+    backdrop-filter: blur(3px);
+  }
+  #tooltip .tt-id { font-size: 11px; color: var(--green2); letter-spacing: 2px; }
+  #tooltip .tt-theme { font-size: 14px; color: #eafff2; font-weight: bold; margin: 2px 0 4px; }
+  #tooltip .tt-thm { font-size: 12px; color: #9dffc4; background: rgba(0,255,102,0.08); padding: 2px 6px; display: inline-block; border-radius: 3px; word-break: break-all; }
+  #tooltip .tt-exit { color: var(--green); text-shadow: 0 0 6px var(--green); font-weight: bold; }
+  #tooltip .tt-deps { color: #7fe0ae; font-size: 11px; word-break: break-all; margin-top: 4px; }
+  #tooltip .tt-layer { font-size: 11px; color: #4cff9e; letter-spacing: 1px; }
+
+  #hint {
+    position: fixed; right: 22px; bottom: 24px; z-index: 10;
+    font-size: 12px; color: var(--green2); letter-spacing: 1px;
+    text-align: right; line-height: 1.7;
+    text-shadow: 0 0 8px var(--green2);
+  }
+  #hint .key { color: #fff; background: rgba(0,255,102,0.12); border: 1px solid var(--green-dim); padding: 1px 6px; border-radius: 3px; }
+
+  #clickPulse {
+    position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    z-index: 6; pointer-events: none;
+    width: 60px; height: 60px; border-radius: 50%;
+    border: 2px solid var(--green2);
+    opacity: 0; box-shadow: 0 0 40px rgba(0,255,102,0.5);
+  }
+  .pulse { animation: pulse 0.9s ease-out forwards; }
+  @keyframes pulse { 0% { transform: translate(-50%, -50%) scale(0.6); opacity: 0.9; } 100% { transform: translate(-50%, -50%) scale(3.2); opacity: 0; } }
+</style>
+</head>
+<body>
+<div id="hud">
+  <div class="title">LEAN TREE // <b>99 SLICES</b> // CHEN&nbsp;GUANG&nbsp;STUDIO</div>
+  <div id="stats">
+    <span class="ok">EXIT=0 ×99</span> &nbsp;·&nbsp; 3× 发光主题枝 + 暗枝 &nbsp;·&nbsp; ZERO SORRY
+  </div>
+</div>
+<div id="legend">
+  <div class="row"><span class="sw" style="color:#00ffcc"></span> RIEMANN ×10 · 发光枝</div>
+  <div class="row"><span class="sw" style="color:#7dff9a"></span> BSD ×11 · 发光枝</div>
+  <div class="row"><span class="sw" style="color:#00e676"></span> GOLDBACH ×12 · 发光枝</div>
+  <div class="row"><span class="sw dark" style="color:#00b050"></span> UNIVERSAL ×31 · 暗枝</div>
+  <div class="row"><span class="sw dark oct" style="color:#00a040"></span> CHALLENGE ×35 · 暗枝</div>
+  <div class="hint">悬停节点查看切片信息卡</div>
+</div>
+<div id="hint">
+  <span class="key">点击树冠 LEAN 核心</span> → 99 切片生长散开 / 收回<br>
+  拖拽旋转 · 滚轮缩放
+</div>
+<div id="tooltip"></div>
+<div id="clickPulse"></div>
+<div id="scanlines"></div>
+<div id="vignette"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+/* ============ 数据（真实提取自 D:\\LeanProjects\\goldbach\\temp\\final_slices.json） ============ */
+const SLICES = [{"id": 1, "layer": "Universal", "no": "001", "theme": "欧拉乘积的通用逻辑", "theorem": "finiteEulerProduct_completelyMultiplicative", "deps": "NumberTheory.EulerProduct.Basic, NumberTheory.EulerProduct.DirichletLSeries", "exit": "EXIT=0"}, {"id": 2, "layer": "Universal", "no": "002", "theme": "解析延拓的通用 Gamma 因子", "theorem": "gammaFactor_ne_zero_of_re_pos", "deps": "Analysis.SpecialFunctions.Gamma.Basic, Analysis.SpecialFunctions.Gamma.Beta, Analysis.SpecialFunctions.Gamma.Deriv", "exit": "EXIT=0"}, {"id": 3, "layer": "Universal", "no": "003", "theme": "狄利克雷卷积代数", "theorem": "dirichletConvolution_apply", "deps": "NumberTheory.ArithmeticFunction.Defs", "exit": "EXIT=0"}, {"id": 4, "layer": "Universal", "no": "004", "theme": "狄利克雷级数绝对收敛", "theorem": "abs_convergence_of_bounded_coefficients", "deps": "NumberTheory.LSeries.Basic", "exit": "EXIT=0"}, {"id": 5, "layer": "Universal", "no": "005", "theme": "模形式空间向量空间", "theorem": "zero_add_left", "deps": "NumberTheory.ModularForms.Basic", "exit": "EXIT=0"}, {"id": 6, "layer": "Universal", "no": "006", "theme": "局部到全局映射", "theorem": "local_factors_prod", "deps": "NumberTheory.ArithmeticFunction.Defs, Analysis.Complex.Basic", "exit": "EXIT=0"}, {"id": 7, "layer": "Universal", "no": "007", "theme": "圆法指数和模长有界", "theorem": "expSum_norm_eq_one", "deps": "Analysis.Complex.Trigonometric, Analysis.SpecialFunctions.Trigonometric.Basic", "exit": "EXIT=0"}, {"id": 8, "layer": "Universal", "no": "008", "theme": "黎曼可积函数代数运算", "theorem": "integrable_add", "deps": "MeasureTheory.Integral.IntervalIntegral.Basic", "exit": "EXIT=0"}, {"id": 9, "layer": "Universal", "no": "009", "theme": "椭圆曲线点加法群律", "theorem": "left_identity", "deps": "AlgebraicGeometry.EllipticCurve.Affine.Point", "exit": "EXIT=0"}, {"id": 10, "layer": "Universal", "no": "010", "theme": "亚纯函数留数定理基础", "theorem": "removable_of_continuous", "deps": "Analysis.Complex.RemovableSingularity", "exit": "EXIT=0"}, {"id": 11, "layer": "Universal", "no": "011", "theme": "Hecke 算子特征", "theorem": "addCommGroup_instance", "deps": "NumberTheory.ModularForms.SlashInvariantForms", "exit": "EXIT=0"}, {"id": 12, "layer": "Universal", "no": "012", "theme": "切比雪夫 θ/ψ 等价", "theorem": "theta_le_psi_le_theta_add_two_sqrt_mul_log", "deps": "NumberTheory.Chebyshev", "exit": "EXIT=0"}, {"id": 13, "layer": "Universal", "no": "013", "theme": "欧拉-马歇罗尼常数", "theorem": "tendsto_eulerMascheroniSeq", "deps": "NumberTheory.Harmonic.EulerMascheroni", "exit": "EXIT=0"}, {"id": 14, "layer": "Universal", "no": "014", "theme": "算术函数与除数扩展", "theorem": "mul_apply_def", "deps": "NumberTheory.ArithmeticFunction.Defs, NumberTheory.Divisors", "exit": "EXIT=0"}, {"id": 15, "layer": "Universal", "no": "015", "theme": "θ/ψ 与素数计数界", "theorem": "theta_le_pi_mul_log_def", "deps": "NumberTheory.Chebyshev", "exit": "EXIT=0"}, {"id": 16, "layer": "Universal", "no": "016", "theme": "解析函数零点结构", "theorem": "analytic_has_fpower_series_def", "deps": "Analysis.Analytic.Basic, Analysis.Analytic.IsolatedZeros, Analysis.Complex.Basic", "exit": "EXIT=0"}, {"id": 17, "layer": "Universal", "no": "017", "theme": "Γ 函数性质", "theorem": "gamma_add_one_complex", "deps": "Analysis.SpecialFunctions.Gamma.Basic", "exit": "EXIT=0"}, {"id": 18, "layer": "Universal", "no": "018", "theme": "尖点形式子模", "theorem": "const_apply_def", "deps": "NumberTheory.ModularForms.CuspFormSubmodule", "exit": "EXIT=0"}, {"id": 19, "layer": "Universal", "no": "019", "theme": "Stirling 公式", "theorem": "stirlingSeq_limit_sqrt_pi", "deps": "Analysis.SpecialFunctions.Stirling", "exit": "EXIT=0"}, {"id": 20, "layer": "Universal", "no": "020", "theme": "Eisenstein 级数 E2", "theorem": "e2Summand_const_term", "deps": "NumberTheory.ModularForms.EisensteinSeries.E2.Defs, NumberTheory.ModularForms.EisensteinSeries.E2.Transform, NumberTheory.ModularForms.EisensteinSeries.Basic", "exit": "EXIT=0"}, {"id": 21, "layer": "Universal", "no": "021", "theme": "素数无穷", "theorem": "prime_unbounded", "deps": "Data.Nat.Prime.Infinite", "exit": "EXIT=0"}, {"id": 22, "layer": "Universal", "no": "022", "theme": "同余", "theorem": "modEq_add", "deps": "Data.Int.ModEq", "exit": "EXIT=0"}, {"id": 23, "layer": "Universal", "no": "023", "theme": "归纳法", "theorem": "induction_principle", "deps": "Data.Nat.Prime.Defs", "exit": "EXIT=0"}, {"id": 24, "layer": "Universal", "no": "024", "theme": "二项式", "theorem": "pascal_identity", "deps": "Data.Nat.Choose.Sum", "exit": "EXIT=0"}, {"id": 25, "layer": "Universal", "no": "025", "theme": "柯西-施瓦茨", "theorem": "cauchySchwarz_norm", "deps": "Analysis.InnerProductSpace.Basic", "exit": "EXIT=0"}, {"id": 26, "layer": "Universal", "no": "026", "theme": "几何级数", "theorem": "geom_sum_finite", "deps": "Algebra.Field.GeomSum, Analysis.SpecificLimits.Basic", "exit": "EXIT=0"}, {"id": 27, "layer": "Universal", "no": "027", "theme": "幂级数收敛", "theorem": "hasSum_geometric_abs", "deps": "Analysis.SpecificLimits.Normed", "exit": "EXIT=0"}, {"id": 28, "layer": "Universal", "no": "028", "theme": "实数完备性", "theorem": "isLUB_sSup", "deps": "Algebra.Order.Archimedean.Real.Basic", "exit": "EXIT=0"}, {"id": 29, "layer": "Universal", "no": "029", "theme": "德摩根", "theorem": "deMorgan_or", "deps": "Data.Nat.Prime.Defs", "exit": "EXIT=0"}, {"id": 30, "layer": "Universal", "no": "030", "theme": "单射满射双射", "theorem": "bijective_iff_inj_surj", "deps": "Logic.Function.Basic", "exit": "EXIT=0"}, {"id": 31, "layer": "Universal", "no": "031", "theme": "无穷集等势", "theorem": "infinite_nat", "deps": "Data.Set.Finite.Basic", "exit": "EXIT=0"}, {"id": 32, "layer": "Riemann", "no": "001", "theme": "欧拉乘积代数核心", "theorem": "coeffAt_replicate", "deps": "self-contained", "exit": "EXIT=0"}, {"id": 33, "layer": "Riemann", "no": "002", "theme": "ζ 在 s=1 的留数", "theorem": "zeta_residue_one_at_one", "deps": "NumberTheory.LSeries.RiemannZeta", "exit": "EXIT=0"}, {"id": 34, "layer": "Riemann", "no": "002B", "theme": "Möbius 函数与求和恒等式", "theorem": "mobiusSum_one", "deps": "Init", "exit": "EXIT=0"}, {"id": 35, "layer": "Riemann", "no": "003", "theme": "Bernoulli 数与递推", "theorem": "bernoulli_zero", "deps": "self-contained", "exit": "EXIT=0"}, {"id": 36, "layer": "Riemann", "no": "004", "theme": "Γ 反射公式", "theorem": "gamma_reflection", "deps": "Analysis.SpecialFunctions.Gamma.Basic, Analysis.SpecialFunctions.Gamma.Beta, Analysis.SpecialFunctions.Gamma.Deriv", "exit": "EXIT=0"}, {"id": 37, "layer": "Riemann", "no": "005", "theme": "Dirichlet η 与 ζ 关系", "theorem": "summable_shift", "deps": "Analysis.PSeriesComplex, NumberTheory.LSeries.RiemannZeta", "exit": "EXIT=0"}, {"id": 38, "layer": "Riemann", "no": "006", "theme": "正偶整数 Euler 公式", "theorem": "zeta_even_euler", "deps": "NumberTheory.LSeries.HurwitzZetaValues", "exit": "EXIT=0"}, {"id": 39, "layer": "Riemann", "no": "007", "theme": "平凡零点", "theorem": "riemannZeta_trivial_zero", "deps": "NumberTheory.LSeries.RiemannZeta", "exit": "EXIT=0"}, {"id": 40, "layer": "Riemann", "no": "008", "theme": "ζ 在零点行为", "theorem": "riemannZeta_at_zero", "deps": "NumberTheory.LSeries.RiemannZeta", "exit": "EXIT=0"}, {"id": 41, "layer": "Riemann", "no": "009", "theme": "completed ζ 函数方程", "theorem": "completed_zeta_symmetric", "deps": "NumberTheory.LSeries.RiemannZeta", "exit": "EXIT=0"}, {"id": 42, "layer": "BSD", "no": "1", "theme": "有限群同态核像", "theorem": "dedupN_length_le", "deps": "self-contained", "exit": "EXIT=0"}, {"id": 43, "layer": "BSD", "no": "2", "theme": "欧拉积局部因子", "theorem": "prod_assoc", "deps": "self-contained", "exit": "EXIT=0"}, {"id": 44, "layer": "BSD", "no": "3", "theme": "引理链表", "theorem": "table12_length", "deps": "self-contained", "exit": "EXIT=0"}, {"id": 45, "layer": "BSD", "no": "4", "theme": "有限集合满射判据", "theorem": "map_nodup_of_injOn", "deps": "self-contained", "exit": "EXIT=0"}, {"id": 46, "layer": "BSD", "no": "5", "theme": "有限序列折叠", "theorem": "fold_nil", "deps": "self-contained", "exit": "EXIT=0"}, {"id": 47, "layer": "BSD", "no": "6", "theme": "命题依赖链传递", "theorem": "chain3", "deps": "self-contained", "exit": "EXIT=0"}, {"id": 48, "layer": "BSD", "no": "Ext1", "theme": "椭圆曲线 Weierstrass 关系", "theorem": "b_relation_any", "deps": "AlgebraicGeometry.EllipticCurve.Weierstrass", "exit": "EXIT=0"}, {"id": 49, "layer": "BSD", "no": "Ext2", "theme": "j 不变量短型", "theorem": "E_j_of_short", "deps": "AlgebraicGeometry.EllipticCurve.NormalForms, AlgebraicGeometry.EllipticCurve.ModelsWithJ", "exit": "EXIT=0"}, {"id": 50, "layer": "BSD", "no": "Ext3", "theme": "j 模型", "theorem": "ofJ_j_value", "deps": "AlgebraicGeometry.EllipticCurve.ModelsWithJ", "exit": "EXIT=0"}, {"id": 51, "layer": "BSD", "no": "Ext4", "theme": "level-1 模形式常数", "theorem": "levelOne_neg_weight_eq_zero", "deps": "NumberTheory.ModularForms.Basic, NumberTheory.ModularForms.LevelOne.Basic", "exit": "EXIT=0"}, {"id": 52, "layer": "BSD", "no": "Ext5", "theme": "Dedekind η 展开", "theorem": "eta_q_pow", "deps": "NumberTheory.ModularForms.DedekindEta", "exit": "EXIT=0"}, {"id": 53, "layer": "Goldbach", "no": "001", "theme": "哥德巴赫偶数分解数值验证", "theorem": "（引理链，见文件）", "deps": "Mathlib (full)", "exit": "EXIT=0"}, {"id": 54, "layer": "Goldbach", "no": "002", "theme": "φ(s) 亚纯性与极点", "theorem": "gamma_meromorphicAt", "deps": "Mathlib (full)", "exit": "EXIT=0"}, {"id": 55, "layer": "Goldbach", "no": "003", "theme": "L(s,χ) 在 s=1 亚纯性", "theorem": "LFunction_eq_LSeries_of_one_lt_re", "deps": "NumberTheory.LSeries.DirichletContinuation, Analysis.Complex.RemovableSingularity, Topology.Piecewise, Analysis.Meromorphic.Basic", "exit": "EXIT=0"}, {"id": 56, "layer": "Goldbach", "no": "004", "theme": "Γ 对数导数", "theorem": "gamma_meromorphicAt", "deps": "Mathlib (full)", "exit": "EXIT=0"}, {"id": 57, "layer": "Goldbach", "no": "005", "theme": "ζ(s) 单极点留数 1", "theorem": "meromorphicAt_self_div_one_sub_one", "deps": "Mathlib (full)", "exit": "EXIT=0"}, {"id": 58, "layer": "Goldbach", "no": "006", "theme": "completed ζ 函数方程", "theorem": "completedRiemannZeta_functional_equation", "deps": "Mathlib (full), Analysis.Meromorphic.Order, NumberTheory.LSeries.RiemannZeta", "exit": "EXIT=0"}, {"id": 59, "layer": "Goldbach", "no": "007", "theme": "Dirichlet 特征正交性", "theorem": "sum_eq_zero_of_ne_one", "deps": "NumberTheory.DirichletCharacter.Basic, NumberTheory.MulChar.Lemmas, Data.Nat.Totient", "exit": "EXIT=0"}, {"id": 60, "layer": "Goldbach", "no": "008", "theme": "completed L 函数方程", "theorem": "LFunction_analyticAt_of_ne_one", "deps": "Mathlib (full), NumberTheory.LSeries.DirichletContinuation, Analysis.Meromorphic.Basic, Analysis.Meromorphic.Order, Analysis.Complex.RemovableSingularity, Topology.Piecewise", "exit": "EXIT=0"}, {"id": 61, "layer": "Goldbach", "no": "009", "theme": "hurwitz ζ 单极点", "theorem": "simple_pole_hurwitzZeta", "deps": "NumberTheory.LSeries.RiemannZeta, Analysis.Meromorphic.Order", "exit": "EXIT=0"}, {"id": 62, "layer": "Goldbach", "no": "010", "theme": "Dirichlet 素数定理", "theorem": "L_one_ne_zero", "deps": "NumberTheory.LSeries.PrimesInAP, NumberTheory.LSeries.Nonvanishing", "exit": "EXIT=0"}, {"id": 63, "layer": "Goldbach", "no": "011", "theme": "L 级数收敛半平面", "theorem": "bounded_LSeriesSummable_of_one_lt_re", "deps": "NumberTheory.LSeries.Deriv, NumberTheory.LSeries.RiemannZeta", "exit": "EXIT=0"}, {"id": 64, "layer": "Goldbach", "no": "012", "theme": "PNT 前置部件", "theorem": "pnt_prereq_psi_def", "deps": "NumberTheory.Chebyshev, NumberTheory.LSeries.Nonvanishing", "exit": "EXIT=0"}, {"id": 65, "layer": "Challenge", "no": "001", "theme": "Cantor-Bernstein-Schröder 定理", "theorem": "schroeder_bernstein", "deps": "SetTheory.Cardinal.SchroederBernstein, SetTheory.Cardinal.Order", "exit": "EXIT=0"}, {"id": 66, "layer": "Challenge", "no": "002", "theme": "椭圆曲线 2-扭点子群", "theorem": "twoTorsion_set_shortQ", "deps": "AlgebraicGeometry.EllipticCurve.Affine.Point", "exit": "EXIT=0"}, {"id": 67, "layer": "Challenge", "no": "003", "theme": "Rouché 定理有限实例", "theorem": "rouche_finite_example", "deps": "Analysis.Complex.Polynomial.Basic, Analysis.Complex.Norm", "exit": "EXIT=0"}, {"id": 68, "layer": "Challenge", "no": "004", "theme": "停机问题不可判定", "theorem": "halting_undecidable", "deps": "Computability.Halting", "exit": "EXIT=0"}, {"id": 69, "layer": "Challenge", "no": "005", "theme": "罗素悖论（幂集不对等）", "theorem": "universe_not_self_contained", "deps": "Data.Set.Basic", "exit": "EXIT=0"}, {"id": 70, "layer": "Challenge", "no": "006", "theme": "五色定理归纳框架", "theorem": "five_color_induction_framework", "deps": "Combinatorics.SimpleGraph.DegreeSum", "exit": "EXIT=0"}, {"id": 71, "layer": "Challenge", "no": "007", "theme": "自由群 F2 悖论分解", "theorem": "F2_paradoxical_decomposition", "deps": "GroupTheory.FreeGroup.Reduce, Data.Set.Basic", "exit": "EXIT=0"}, {"id": 72, "layer": "Challenge", "no": "008", "theme": "哥德尔对角线引理", "theorem": "godel_diagonal_lemma", "deps": "Data.Set.Basic", "exit": "EXIT=0"}, {"id": 73, "layer": "Challenge", "no": "009", "theme": "切比雪夫素数界", "theorem": "chebyshevLowerBound", "deps": "NumberTheory.PrimeCounting, Data.Nat.Log", "exit": "EXIT=0"}, {"id": 74, "layer": "Challenge", "no": "010", "theme": "ζ 非零区域（Dirichlet L 前置）", "theorem": "riemannZeta_ne_zero_one_le_re", "deps": "NumberTheory.LSeries.Nonvanishing", "exit": "EXIT=0"}, {"id": 75, "layer": "Challenge", "no": "011", "theme": "Hasse 界有限域实例", "theorem": "hasse_finite_p5", "deps": "AlgebraicGeometry.EllipticCurve.LFunction, Analysis.Real.Sqrt", "exit": "EXIT=0"}, {"id": 76, "layer": "Challenge", "no": "012", "theme": "Sylow 第一定理", "theorem": "sylow_first_exists_sylow_subgroup", "deps": "GroupTheory.Sylow, GroupTheory.OrderOfElement", "exit": "EXIT=0"}, {"id": 77, "layer": "Challenge", "no": "013.1", "theme": "Wedderburn 小定理", "theorem": "wedderburn_little", "deps": "RingTheory.LittleWedderburn, Algebra.Field.Defs", "exit": "EXIT=0"}, {"id": 78, "layer": "Challenge", "no": "013.2", "theme": "有限除环乘法交换", "theorem": "finite_divisionRing_mul_comm", "deps": "RingTheory.LittleWedderburn, Algebra.Field.Defs", "exit": "EXIT=0"}, {"id": 79, "layer": "Challenge", "no": "013.3", "theme": "有限除环中心=全环", "theorem": "all_mem_center", "deps": "RingTheory.LittleWedderburn, Algebra.Field.Defs", "exit": "EXIT=0"}, {"id": 80, "layer": "Challenge", "no": "013.4", "theme": "有限整环为域（对照）", "theorem": "finite_domain_isField", "deps": "RingTheory.LittleWedderburn, Algebra.Field.Defs", "exit": "EXIT=0"}, {"id": 81, "layer": "Challenge", "no": "014.1", "theme": "欧拉路径必要条件", "theorem": "eulerian_exists_odd_degree_eq_zero_or_two", "deps": "Combinatorics.SimpleGraph.Trails, Combinatorics.SimpleGraph.DegreeSum", "exit": "EXIT=0"}, {"id": 82, "layer": "Challenge", "no": "014.2", "theme": "欧拉遍历连通性", "theorem": "eulerian_connected_of_no_isolated", "deps": "Combinatorics.SimpleGraph.Trails, Combinatorics.SimpleGraph.DegreeSum", "exit": "EXIT=0"}, {"id": 83, "layer": "Challenge", "no": "014.3", "theme": "非端点度数为偶", "theorem": "eulerian_nonendpoint_even_degree", "deps": "Combinatorics.SimpleGraph.Trails, Combinatorics.SimpleGraph.DegreeSum", "exit": "EXIT=0"}, {"id": 84, "layer": "Challenge", "no": "014.4", "theme": "端点度数为奇", "theorem": "eulerian_endpoint_odd_degree", "deps": "Combinatorics.SimpleGraph.Trails, Combinatorics.SimpleGraph.DegreeSum", "exit": "EXIT=0"}, {"id": 85, "layer": "Challenge", "no": "014.5", "theme": "握手引理：奇度顶点数偶", "theorem": "odd_degree_vertices_card_even", "deps": "Combinatorics.SimpleGraph.Trails, Combinatorics.SimpleGraph.DegreeSum", "exit": "EXIT=0"}, {"id": 86, "layer": "Challenge", "no": "015.1", "theme": "Zorn 引理（mathlib）", "theorem": "zorn_lemma", "deps": "Order.Zorn", "exit": "EXIT=0"}, {"id": 87, "layer": "Challenge", "no": "015.2", "theme": "Zorn 集合形式", "theorem": "zorn_subset_nonempty'", "deps": "Order.Zorn", "exit": "EXIT=0"}, {"id": 88, "layer": "Challenge", "no": "015.3", "theme": "Zorn ⟹ 全定义选择函数", "theorem": "maximal_is_total", "deps": "Order.Zorn", "exit": "EXIT=0"}, {"id": 89, "layer": "Challenge", "no": "016.1", "theme": "拉格朗日定理", "theorem": "lagrange_card_dvd", "deps": "GroupTheory.Index, GroupTheory.Perm.Cycle.Type, GroupTheory.Perm.Basic", "exit": "EXIT=0"}, {"id": 90, "layer": "Challenge", "no": "016.2", "theme": "凯莱定理（群嵌入置换群）", "theorem": "cayley_embedding", "deps": "GroupTheory.Index, GroupTheory.Perm.Cycle.Type, GroupTheory.Perm.Basic", "exit": "EXIT=0"}, {"id": 91, "layer": "Challenge", "no": "016.3", "theme": "Cauchy 定理", "theorem": "cauchy_prime_order", "deps": "GroupTheory.Index, GroupTheory.Perm.Cycle.Type, GroupTheory.Perm.Basic", "exit": "EXIT=0"}, {"id": 92, "layer": "Challenge", "no": "017.1", "theme": "费马小定理", "theorem": "fermat_little", "deps": "NumberTheory.PowModTotient, Data.ZMod.Basic, Data.Nat.Prime.Infinite, Data.Nat.Factorization.Defs, Data.Int.GCD", "exit": "EXIT=0"}, {"id": 93, "layer": "Challenge", "no": "017.2", "theme": "欧拉 totient 定理", "theorem": "euler_totient", "deps": "NumberTheory.PowModTotient, Data.ZMod.Basic, Data.Nat.Prime.Infinite, Data.Nat.Factorization.Defs, Data.Int.GCD", "exit": "EXIT=0"}, {"id": 94, "layer": "Challenge", "no": "017.3", "theme": "中国剩余定理", "theorem": "chinese_remainder", "deps": "NumberTheory.PowModTotient, Data.ZMod.Basic, Data.Nat.Prime.Infinite, Data.Nat.Factorization.Defs, Data.Int.GCD", "exit": "EXIT=0"}, {"id": 95, "layer": "Challenge", "no": "017.4", "theme": "素数无穷", "theorem": "infinite_primes", "deps": "NumberTheory.PowModTotient, Data.ZMod.Basic, Data.Nat.Prime.Infinite, Data.Nat.Factorization.Defs, Data.Int.GCD", "exit": "EXIT=0"}, {"id": 96, "layer": "Challenge", "no": "017.5", "theme": "算术基本定理", "theorem": "fundamental_theorem_of_arithmetic", "deps": "NumberTheory.PowModTotient, Data.ZMod.Basic, Data.Nat.Prime.Infinite, Data.Nat.Factorization.Defs, Data.Int.GCD", "exit": "EXIT=0"}, {"id": 97, "layer": "Challenge", "no": "017.6", "theme": "贝祖引理", "theorem": "bezout_lemma", "deps": "NumberTheory.PowModTotient, Data.ZMod.Basic, Data.Nat.Prime.Infinite, Data.Nat.Factorization.Defs, Data.Int.GCD", "exit": "EXIT=0"}, {"id": 98, "layer": "Challenge", "no": "018.1", "theme": "良序原理（最小数原理）", "theorem": "nat_well_ordering", "deps": "Data.Nat.Find, Analysis.Real.Cardinality", "exit": "EXIT=0"}, {"id": 99, "layer": "Challenge", "no": "018.2", "theme": "实数不可数", "theorem": "real_uncountable", "deps": "Data.Nat.Find, Analysis.Real.Cardinality", "exit": "EXIT=0"}];
+
+const BRIGHT_COLORS = {
+  "Riemann":  0x00ffcc,
+  "BSD":      0x7dff9a,
+  "Goldbach": 0x00e676
+};
+const DARK_COLOR  = 0x00a040;   // 暗枝：未解锁切片
+const TRUNK_COLOR = 0x00ff88;
+
+const LAYER_NAMES = {
+  "Universal": "UNIVERSAL · 通用逻辑基础（暗枝）",
+  "Riemann":   "RIEMANN · 黎曼 ζ 切片（发光主题枝）",
+  "BSD":       "BSD · 椭圆曲线切片（发光主题枝）",
+  "Goldbach":  "GOLDBACH · 哥德巴赫切片（发光主题枝）",
+  "Challenge": "CHALLENGE · 挑战定理（暗枝）"
+};
+
+/* ============ 树状布局 ============
+   树根：暗区切片（Universal + Challenge）交织成底座网络（环 + 连线），y≈0
+   树干：发光主柱 y 0→8，标注 H3/H2/H1 中央通道
+   三主枝：RIEMANN / BSD / GOLDBACH 从树干上部斜向升空，明亮发光
+   暗枝：从树干下部伸出，承载暗色切片
+   树冠：顶部 LEAN 核心节点（可点击） */
+function makeBranchCurve(direction, baseY, topY, reach) {
+  const dir = new THREE.Vector3(Math.cos(direction), 0, Math.sin(direction));
+  const pts = [
+    new THREE.Vector3(0, baseY, 0),
+    new THREE.Vector3(dir.x * reach * 0.35, baseY + (topY - baseY) * 0.45, dir.z * reach * 0.35),
+    new THREE.Vector3(dir.x * reach * 0.72, baseY + (topY - baseY) * 0.78, dir.z * reach * 0.72),
+    new THREE.Vector3(dir.x * reach, topY, dir.z * reach)
+  ];
+  return new THREE.CatmullRomCurve3(pts);
+}
+
+function layoutSlices() {
+  const target = new Map();
+  const root = SLICES.filter(s => s.layer === "Universal" || s.layer === "Challenge");
+  const riemann = SLICES.filter(s => s.layer === "Riemann");
+  const bsd = SLICES.filter(s => s.layer === "BSD");
+  const goldbach = SLICES.filter(s => s.layer === "Goldbach");
+
+  // 树根底座：暗区切片环形网络
+  const R0 = 8.2;
+  root.forEach((s, i) => {
+    const a = (i / root.length) * Math.PI * 2 - Math.PI / 2;
+    const lift = 0.35 * Math.sin(a * 3 + i * 0.7); // 底座轻微起伏
+    target.set(s.id, {
+      x: Math.cos(a) * R0, y: 0.25 + lift, z: Math.sin(a) * R0,
+      r: 0.36, bright: false, shape: s.layer === "Challenge" ? "oct" : "sph"
+    });
+  });
+
+  // 三主枝（挂主题切片）
+  const branches = [
+    { items: riemann, curve: makeBranchCurve(-Math.PI / 2, 4.6, 8.6, 7.6), tag: "RIEMANN" },
+    { items: bsd,     curve: makeBranchCurve(Math.PI / 6, 4.8, 8.9, 8.0),  tag: "BSD" },
+    { items: goldbach,curve: makeBranchCurve(5 * Math.PI / 6, 4.7, 8.4, 7.4), tag: "GOLDBACH" }
+  ];
+  for (const b of branches) {
+    b.items.forEach((s, i) => {
+      const t = b.items.length === 1 ? 0.5 : i / (b.items.length - 1);
+      const tEnd = 0.22 + t * 0.72;
+      const p = b.curve.getPoint(tEnd);
+      target.set(s.id, { x: p.x, y: p.y, z: p.z, r: 0.42, bright: true, shape: "sph", branch: b.tag, t: tEnd });
+    });
+  }
+  return { target, root, branches };
+}
+
+/* ============ Three.js ============ */
+let renderer, scene, camera, controls, raycaster;
+let coreMesh, coreGlow, ringA, ringB;
+let sliceMeshes = [];
+let trunkGroup, rootGroup;
+let spread = false, collapsing = false;
+let animProgress = -1;
+let clock = new THREE.Clock();
+const LAYOUT = layoutSlices();
+const TARGET = LAYOUT.target;
+const ROOT_ITEMS = LAYOUT.root;
+const CENTER_ORIGIN = new THREE.Vector3(0, 1.2, 0); // 初始聚集点（树根中央）
+
+function init() {
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+  scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x040a05, 0.008);
+
+  camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 300);
+  camera.position.set(14, 10, 16);
+  camera.lookAt(0, 4.0, 0);
+
+  if (THREE.OrbitControls) {
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.target.set(0, 4.0, 0);
+    controls.minDistance = 7;
+    controls.maxDistance = 60;
+    controls.maxPolarAngle = Math.PI * 0.88;
+  }
+
+  raycaster = new THREE.Raycaster();
+  buildLights();
+  buildGround();
+  buildTree();
+  buildSlices();
+  buildRootLinks();
+  window.addEventListener("resize", onResize);
+  window.addEventListener("pointermove", onPointerMove);
+  renderer.domElement.addEventListener("click", onCanvasClick);
+  animate();
+}
+
+function buildLights() {
+  scene.add(new THREE.AmbientLight(0x113322, 0.6));
+  const dir = new THREE.DirectionalLight(0x00ff88, 0.7);
+  dir.position.set(10, 20, 6);
+  scene.add(dir);
+  const point = new THREE.PointLight(0x00ffcc, 1.1, 55);
+  point.position.set(0, 8, 0);
+  scene.add(point);
+}
+
+function makeGlow(color, size, spriteTex) {
+  const mat = new THREE.SpriteMaterial({ map: spriteTex, color: color, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+  const sp = new THREE.Sprite(mat);
+  sp.scale.set(size, size, 1);
+  return sp;
+}
+
+function makeTextSprite(text, color) {
+  const c = document.createElement("canvas");
+  c.width = 512; c.height = 128;
+  const g = c.getContext("2d");
+  g.clearRect(0, 0, c.width, c.height);
+  g.font = "bold 54px Consolas, monospace";
+  g.textAlign = "center"; g.textBaseline = "middle";
+  g.shadowColor = color; g.shadowBlur = 18;
+  g.fillStyle = color;
+  g.fillText(text, c.width / 2, c.height / 2);
+  const tex = new THREE.CanvasTexture(c);
+  const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+  const sp = new THREE.Sprite(mat);
+  sp.scale.set(2.6, 0.65, 1);
+  return sp;
+}
+
+function buildGround() {
+  const grid = new THREE.GridHelper(46, 46, 0x00ff66, 0x003a18);
+  grid.position.y = -0.03;
+  grid.material.transparent = true;
+  grid.material.opacity = 0.30;
+  scene.add(grid);
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(8.4, 9.1, 96),
+    new THREE.MeshBasicMaterial({ color: 0x00ff66, transparent: true, opacity: 0.08, side: THREE.DoubleSide })
+  );
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.y = 0.0;
+  scene.add(ring);
+}
+
+/* ---------- 科技之树：树干 / 枝丫 / 树冠 ---------- */
+function buildTree() {
+  trunkGroup = new THREE.Group();
+  scene.add(trunkGroup);
+  const tex = makeRadialTexture();
+
+  // 发光树干（H3-H2-H1 中央通道）
+  const trunkMat = new THREE.MeshPhongMaterial({
+    color: TRUNK_COLOR, emissive: TRUNK_COLOR, emissiveIntensity: 0.75, transparent: true, opacity: 0.9, shininess: 90
+  });
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.55, 8.2, 24, 1, true), trunkMat);
+  trunk.position.y = 4.1;
+  trunkGroup.add(trunk);
+  const trunkGlow = makeGlow(0x00ff88, 3.4, tex);
+  trunkGlow.position.y = 4.1;
+  trunkGroup.add(trunkGlow);
+
+  // 树干能量螺旋
+  const helixPts = [];
+  for (let i = 0; i <= 160; i++) {
+    const t = i / 160;
+    const y = 0.15 + t * 8.0;
+    const rad = 0.62 + 0.18 * t;
+    helixPts.push(new THREE.Vector3(Math.cos(t * Math.PI * 8) * rad, y, Math.sin(t * Math.PI * 8) * rad));
+  }
+  const helixCurve = new THREE.CatmullRomCurve3(helixPts);
+  const helix = new THREE.Mesh(
+    new THREE.TubeGeometry(helixCurve, 200, 0.018, 6, false),
+    new THREE.MeshBasicMaterial({ color: 0x00ffcc, transparent: true, opacity: 0.65 })
+  );
+  trunkGroup.add(helix);
+
+  // H3 / H2 / H1 通道标签
+  const h1 = makeTextSprite("H1", "#00ffcc"); h1.position.set(1.7, 1.2, 0.6); trunkGroup.add(h1);
+  const h2 = makeTextSprite("H2", "#00ff88"); h2.position.set(-1.7, 4.1, -0.6); trunkGroup.add(h2);
+  const h3 = makeTextSprite("H3", "#00ff66"); h3.position.set(1.7, 7.0, 0.6); trunkGroup.add(h3);
+
+  // 三个发光主枝
+  const brightBranches = [
+    { curve: makeBranchCurve(-Math.PI / 2, 4.6, 8.6, 7.6), color: 0x00ffcc, tag: "RIEMANN" },
+    { curve: makeBranchCurve(Math.PI / 6, 4.8, 8.9, 8.0),   color: 0x7dff9a, tag: "BSD" },
+    { curve: makeBranchCurve(5 * Math.PI / 6, 4.7, 8.4, 7.4), color: 0x00e676, tag: "GOLDBACH" }
+  ];
+  for (const b of brightBranches) {
+    const tube = new THREE.Mesh(
+      new THREE.TubeGeometry(b.curve, 80, 0.09, 8, false),
+      new THREE.MeshBasicMaterial({ color: b.color, transparent: true, opacity: 0.9 })
+    );
+    trunkGroup.add(tube);
+    const tip = b.curve.getPoint(1);
+    const label = makeTextSprite(b.tag, "#" + b.color.toString(16).padStart(6, "0"));
+    label.position.set(tip.x * 1.14, tip.y + 0.5, tip.z * 1.14);
+    trunkGroup.add(label);
+  }
+
+  // 暗枝（树干下部伸向暗区）
+  const darkDirs = [0, Math.PI / 1.6, Math.PI * 2 - Math.PI / 1.6];
+  for (const d of darkDirs) {
+    const curve = makeBranchCurve(d, 1.6, 2.2, 6.4);
+    const tube = new THREE.Mesh(
+      new THREE.TubeGeometry(curve, 60, 0.05, 6, false),
+      new THREE.MeshBasicMaterial({ color: 0x007a30, transparent: true, opacity: 0.55 })
+    );
+    trunkGroup.add(tube);
+  }
+
+  // 树冠核心（LEAN 节点）
+  coreMesh = new THREE.Mesh(
+    new THREE.OctahedronGeometry(0.95, 0),
+    new THREE.MeshPhongMaterial({ color: 0x00ffcc, emissive: 0x00b355, emissiveIntensity: 1.0, shininess: 90 })
+  );
+  coreMesh.position.set(0, 9.6, 0);
+  scene.add(coreMesh);
+  coreGlow = makeGlow(0x00ffcc, 5.6, tex);
+  coreGlow.position.copy(coreMesh.position);
+  scene.add(coreGlow);
+  const leanLabel = makeTextSprite("LEAN", "#00ffcc");
+  leanLabel.position.set(0, 10.6, 0);
+  scene.add(leanLabel);
+
+  const rmat = new THREE.MeshBasicMaterial({ color: 0x00ff66, transparent: true, opacity: 0.5, side: THREE.DoubleSide });
+  ringA = new THREE.Mesh(new THREE.TorusGeometry(1.5, 0.02, 8, 80), rmat);
+  ringA.position.copy(coreMesh.position);
+  scene.add(ringA);
+  ringB = new THREE.Mesh(new THREE.TorusGeometry(1.9, 0.012, 8, 80), rmat);
+  ringB.position.copy(coreMesh.position);
+  scene.add(ringB);
+}
+
+function buildSlices() {
+  const tex = makeRadialTexture();
+  for (const s of SLICES) {
+    const t = TARGET.get(s.id);
+    const color = t.bright ? BRIGHT_COLORS[s.layer] : DARK_COLOR;
+    const geo = t.shape === "oct"
+      ? new THREE.OctahedronGeometry(t.r * 1.25, 0)
+      : new THREE.SphereGeometry(t.r, 20, 20);
+    const mat = new THREE.MeshPhongMaterial({
+      color: color,
+      emissive: color,
+      emissiveIntensity: t.bright ? 0.85 : 0.28,   // 明暗对比
+      transparent: true,
+      opacity: t.bright ? 1.0 : 0.62,
+      shininess: t.bright ? 70 : 20
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.copy(CENTER_ORIGIN);
+    mesh.userData = s;
+    mesh.visible = false;
+    scene.add(mesh);
+    const glowSize = t.bright ? t.r * 7.5 : t.r * 3.2;
+    const glow = makeGlow(color, glowSize, tex);
+    glow.position.copy(mesh.position);
+    glow.visible = false;
+    scene.add(glow);
+    sliceMeshes.push({ mesh, glow, data: s, home: t, orig: mesh.position.clone() });
+  }
+}
+
+/* 树根网络连线（暗区切片交织） */
+function buildRootLinks() {
+  rootGroup = new THREE.Group();
+  scene.add(rootGroup);
+  rootGroup.visible = false;
+  const pts = ROOT_ITEMS.map(s => {
+    const t = TARGET.get(s.id);
+    return new THREE.Vector3(t.x, t.y, t.z);
+  });
+  // 环相邻连线 + 稀疏交叉连线（交织网络）
+  const lines = [];
+  const n = pts.length;
+  for (let i = 0; i < n; i++) {
+    const a = pts[i];
+    const b = pts[(i + 1) % n];
+    lines.push(a.x, a.y, a.z, b.x, b.y, b.z);
+    if (i % 7 === 0) {
+      const c = pts[(i + Math.floor(n / 2)) % n];
+      lines.push(a.x, a.y, a.z, c.x, c.y, c.z);
+    }
+    if (i % 11 === 0) {
+      const d = pts[(i + 23) % n];
+      lines.push(a.x, a.y, a.z, d.x, d.y, d.z);
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.Float32BufferAttribute(lines, 3));
+  const lineMat = new THREE.LineBasicMaterial({ color: 0x00a040, transparent: true, opacity: 0.32 });
+  const segs = new THREE.LineSegments(geo, lineMat);
+  rootGroup.add(segs);
+}
+
+function makeRadialTexture() {
+  const c = document.createElement("canvas");
+  c.width = c.height = 128;
+  const g = c.getContext("2d");
+  const grad = g.createRadialGradient(64, 64, 2, 64, 64, 64);
+  grad.addColorStop(0, "rgba(255,255,255,0.85)");
+  grad.addColorStop(0.35, "rgba(255,255,255,0.30)");
+  grad.addColorStop(1, "rgba(255,255,255,0)");
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 128, 128);
+  return new THREE.CanvasTexture(c);
+}
+
+/* ---------- 点击动画：生长散开 / 收回 ---------- */
+const EASE = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+function toggleSpread() {
+  if (animProgress < 0) {
+    animProgress = 0;
+    sliceMeshes.forEach(o => { o.mesh.visible = true; o.glow.visible = true; });
+    if (rootGroup) rootGroup.visible = true;
+  } else if (animProgress === 2) {
+    animProgress = 0;
+    collapsing = true;
+  } else return;
+  const pulse = document.getElementById("clickPulse");
+  pulse.style.animation = "none";
+  void pulse.offsetWidth;
+  pulse.style.animation = "";
+  pulse.classList.remove("pulse");
+  void pulse.offsetWidth;
+  pulse.classList.add("pulse");
+}
+
+function updateAnimation() {
+  if (animProgress < 0 || animProgress === 2) return;
+  const dt = clock.getDelta();
+  animProgress = Math.min(animProgress + dt * 0.5, 1);
+  const p = EASE(animProgress);
+  for (const o of sliceMeshes) {
+    const t = o.home;
+    const from = o.orig.clone();
+    const to = collapsing ? CENTER_ORIGIN.clone() : new THREE.Vector3(t.x, t.y, t.z);
+    o.mesh.position.lerpVectors(from, to, p);
+    o.glow.position.copy(o.mesh.position);
+  }
+  if (animProgress >= 1) {
+    if (collapsing) {
+      collapsing = false; spread = false; animProgress = -1;
+      sliceMeshes.forEach(o => { o.mesh.visible = false; o.glow.visible = false; });
+      if (rootGroup) rootGroup.visible = false;
+      sliceMeshes.forEach(o => { o.orig.copy(o.mesh.position); });
+    } else {
+      animProgress = 2; spread = true;
+    }
+  }
+}
+
+/* ---------- 悬停 / 点击 ---------- */
+const tooltip = document.getElementById("tooltip");
+let hovered = null;
+
+function pickObjects(clientX, clientY) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  const ndc = new THREE.Vector2(
+    ((clientX - rect.left) / rect.width) * 2 - 1,
+    -((clientY - rect.top) / rect.height) * 2 + 1
+  );
+  raycaster.setFromCamera(ndc, camera);
+  const meshes = sliceMeshes.map(o => o.mesh);
+  const hits = raycaster.intersectObjects(meshes, false);
+  if (hits.length > 0) return hits[0].object;
+  const core = raycaster.intersectObject(coreMesh, false);
+  if (core.length > 0) return core[0].object;
+  return null;
+}
+
+function onPointerMove(e) {
+  const obj = pickObjects(e.clientX, e.clientY);
+  if (obj && obj.userData) {
+    if (hovered && hovered !== obj) hovered.scale.setScalar(1);
+    hovered = obj;
+    hovered.scale.setScalar(1.3);
+    showTooltip(e.clientX, e.clientY, obj.userData);
+  } else {
+    if (hovered) hovered.scale.setScalar(1);
+    hovered = null;
+    tooltip.style.display = "none";
+  }
+}
+
+function showTooltip(x, y, s) {
+  tooltip.innerHTML =
+    '<div class="tt-id">SLICE ' + (s.layer === "Challenge" ? "C#" + s.no : "S#" + String(s.no).padStart(3, "0")) +
+    ' · ' + s.layer + '</div>' +
+    '<div class="tt-theme">' + s.theme + '</div>' +
+    '<div class="tt-thm">' + s.theorem + '</div>' +
+    '<div><span class="tt-exit">' + s.exit + '</span> <span class="tt-layer">' + LAYER_NAMES[s.layer] + '</span></div>' +
+    '<div class="tt-deps">deps: ' + s.deps + '</div>';
+  tooltip.style.display = "block";
+  const pad = 18;
+  const tw = tooltip.offsetWidth, th = tooltip.offsetHeight;
+  let px = x + pad, py = y + pad;
+  if (px + tw > window.innerWidth - 10) px = x - tw - pad;
+  if (py + th > window.innerHeight - 10) py = y - th - pad;
+  tooltip.style.left = px + "px";
+  tooltip.style.top = py + "px";
+}
+
+function onCanvasClick(e) {
+  const obj = pickObjects(e.clientX, e.clientY);
+  if (obj === coreMesh) { toggleSpread(); return; }
+  if (obj && obj.userData) {
+    showTooltip(e.clientX, e.clientY, obj.userData);
+    return;
+  }
+}
+
+/* ---------- 主循环 ---------- */
+function animate() {
+  requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+  // 树冠脉动 + 光环
+  const pulse = 1 + Math.sin(t * 2.2) * 0.06;
+  coreMesh.scale.setScalar(pulse);
+  ringA.rotation.x = Math.PI / 2 + Math.sin(t * 0.6) * 0.1;
+  ringA.rotation.y += 0.01;
+  ringB.rotation.x = Math.PI / 2 - Math.sin(t * 0.6) * 0.1;
+  ringB.rotation.y -= 0.006;
+
+  // 切片微浮：亮区明显、暗区微弱
+  if (spread) {
+    for (const o of sliceMeshes) {
+      const amp = o.home.bright ? 0.10 : 0.05;
+      const yy = o.home.y + Math.sin(t * 0.9 + o.data.id * 0.37) * amp;
+      o.mesh.position.y = yy;
+      o.glow.position.copy(o.mesh.position);
+    }
+    if (rootGroup) rootGroup.rotation.y = t * 0.02;
+  }
+  updateAnimation();
+  if (controls) controls.update();
+  else {
+    camera.position.x = Math.cos(t * 0.05) * camera.position.length();
+    camera.position.z = Math.sin(t * 0.05) * camera.position.length();
+    camera.lookAt(0, 4.0, 0);
+  }
+  renderer.render(scene, camera);
+}
+
+function onResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+/* 数据完整性自检 */
+const BY_LAYER = {};
+SLICES.forEach(s => { BY_LAYER[s.layer] = (BY_LAYER[s.layer] || 0) + 1; });
+console.log("[LEAN TREE] slices:", SLICES.length, BY_LAYER);
+
+if (!THREE.OrbitControls) console.warn("[LEAN TREE] OrbitControls 加载失败，启用自动旋转模式");
+
+init();
+</script>
+</body>
+</html>
