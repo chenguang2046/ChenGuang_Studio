@@ -1,6 +1,6 @@
 import Mathlib.RingTheory.LittleWedderburn
 import Mathlib.Algebra.Field.Defs
-import ChenGuang_99_Slices.Challenge_013_002_Wedderburn_MulComm
+import Slices_99.Challenge_013_002_Wedderburn_MulComm
 
 /-!
 # Challenge 013.3 — 有限除环中心 = 全环
