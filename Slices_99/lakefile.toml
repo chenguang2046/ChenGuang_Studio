@@ -1,0 +1,10 @@
+name = "Slices_99"
+version = "0.1.0"
+defaultTargets = ["Slices_99"]
+
+[[require]]
+name = "mathlib"
+path = "../.lake/packages/mathlib"
+
+[[lean_lib]]
+name = "Slices_99"
