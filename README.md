@@ -1,6 +1,6 @@
-# ChenGuang 99 切片形式化验证合集
+# analytic_core
 
-> 99 个独立的 Lean 4 形式化验证切片 · 全量编译 EXIT=0 · 零 `sorry` / `admit` · 公理审计仅限标准公理
+Lean 4 + mathlib 形式化验证仓库：99 个独立切片全量编译 EXIT=0，零 `sorry` / `admit`，公理审计仅报告标准公理。
 
 ## 项目简介
 
@@ -21,29 +21,33 @@ propext, Classical.choice, Quot.sound
 
 ```
 goldbach/
-├── README.md                    # 本文件
-├── lakefile.toml                # 项目级 Lake 配置
-├── ChenGuang_99_Slices/         # 99 切片合集
-│   ├── All_Slices.lean          # 总控文件，import 全部 99 个切片
-│   ├── lakefile.toml            # 子目录 Lake 配置
-│   ├── lean-toolchain           # 锁定的 Lean 工具链
-│   ├── Universal_Slice_001.lean ... Universal_Slice_031.lean   # 31 个通用基础切片
-│   ├── Riemann_Slice_001.lean ... Riemann_Slice_009.lean       # 10 个黎曼切片（含 002B）
-│   ├── BSD_Slice_001.lean ... BSD_Slice_006.lean               # 11 个 BSD 切片（含 Ext1–Ext5）
-│   ├── GoldbachCheck.lean, PhiFull_v4.lean, ...                # 12 个哥德巴赫相关切片
-│   └── Challenge_*.lean, Slice_Challenge_*.lean                # 35 个挑战切片
-└── ChenGuang_Universal_Base_64/ # 64 基础切片子集（可选参考）
+├── README.md              # 本文件
+├── lakefile.toml          # 项目级 Lake 配置（包名 analytic_core）
+├── LICENSE                # MIT 许可证
+├── Slices_99/             # 99 切片合集
+│   ├── All_Slices.lean    # 总控文件，import 全部 99 个切片
+│   ├── lakefile.toml      # 子目录 Lake 配置
+│   ├── lean-toolchain     # 锁定的 Lean 工具链
+│   ├── Universal_Slice_001.lean ... Universal_Slice_031.lean  # 31 个通用基础切片
+│   ├── Zeta_Slice_001.lean ... Zeta_Slice_009.lean            # 10 个 zeta 切片（含 002B）
+│   ├── Elliptic_Slice_001.lean ... Elliptic_Slice_006.lean    # 6 个椭圆曲线切片
+│   ├── BSD_Ext_Slice_001.lean ... BSD_Ext_Slice_005.lean      # 5 个扩展切片
+│   ├── GoldbachCheck.lean, PhiFull_v4.lean, ...               # 哥德巴赫相关切片
+│   └── Challenge_*.lean, Slice_Challenge_*.lean               # 35 个挑战切片
+└── Base_64/             # 64 基础切片子集（可选参考）
+    ├── All_Slices.lean  # 总控文件，import 全部 64 个切片
+    └── 其余基础切片与 lean-toolchain
 ```
 
-总控文件 `ChenGuang_99_Slices/All_Slices.lean` import 全部 99 个切片，编译该文件即可验证整个合集。
+总控文件 `Slices_99/All_Slices.lean` import 全部 99 个切片，编译该文件即可验证整个合集。
 
 ## 分类统计
 
 | 层 | 数量 | 说明 |
 |---|---:|---|
 | Universal（通用基础） | 31 | 通用逻辑基础：欧拉乘积、Gamma 函数、模形式、素数、集合论基础 |
-| Riemann（黎曼） | 10 | 黎曼 zeta 相关切片（含 002B：Möbius 求和恒等式） |
-| BSD | 11 | 椭圆曲线切片（001–006 及 Ext1–Ext5） |
+| Zeta（zeta 函数） | 10 | zeta 相关切片（含 002B：Möbius 求和恒等式） |
+| Elliptic（椭圆曲线） | 11 | 椭圆曲线切片（001–006 及 BSD_Ext 001–005） |
 | Goldbach（哥德巴赫） | 12 | 哥德巴赫相关切片：zeta / L 函数 / PNT 前置 |
 | Challenge（挑战） | 35 | 挑战定理：CBS、2-torsion、Rouché、004–018 系列 |
 | **合计** | **99** | **64 基础 + 35 挑战，全部 EXIT=0，零 sorry** |
@@ -53,13 +57,13 @@ goldbach/
 在仓库根目录（使用项目级 Lake 配置）编译：
 
 ```bash
-lake env lean ChenGuang_99_Slices/All_Slices.lean
+lake env lean Slices_99/All_Slices.lean
 ```
 
 或直接进入切片目录编译：
 
 ```bash
-cd ChenGuang_99_Slices
+cd Slices_99
 lake env lean All_Slices.lean
 ```
 
@@ -67,4 +71,4 @@ lake env lean All_Slices.lean
 
 ## 许可证
 
-本仓库当前未包含 LICENSE 文件，默认保留所有权利；如需授权使用或分发，请联系作者。
+本项目基于 MIT 许可证发布，Copyright (c) 2026 Chen Yong。详见 [LICENSE](LICENSE)。
