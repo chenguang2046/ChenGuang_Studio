@@ -1,0 +1,11 @@
+import Slices_99.Challenge_110_FareySharp
+open Goldbach110
+#check @BesselResidualGap
+#check @large_sieve_sharp_of_bessel
+#check @Goldbach109.sieveSumOver
+#check @Goldbach109.fareyPoints
+#check @Goldbach109.coefficientEnergy
+#check @Goldbach109.weightedExpSum_normSq_le
+#check @Finset.sum_mul_sum
+#check @Complex.normSq_eq_conj_mul_self
+#check @Complex.normSq_eq_norm_sq

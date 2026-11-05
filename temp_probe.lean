@@ -1,0 +1,3 @@
+﻿import Slices_99.Challenge_107_WeilExplicit
+#check Challenge107.WeilExplicitFormulaGap
+#check Challenge108.weilFormulaRecipeOf107

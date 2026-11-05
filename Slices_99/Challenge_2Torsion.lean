@@ -1,24 +1,3 @@
-/-
-Challenge 2: explicit structure of the 2-torsion points of an elliptic curve
-=============================================================================
-
-Statement: on a short Weierstrass curve `y² = x³ + a·x + b` over a field `F` of
-characteristic `≠ 2` with nonzero discriminant `Δ`, the 2-torsion points (i.e.
-`P + P = 0`) are exactly `O` together with the points `(x, 0)` whose `x`-coordinate
-is a root of `x³ + a·x + b = 0`.
-
-Mathlib status: the 2-torsion polynomial machinery exists as
-`WeierstrassCurve.twoTorsionPolynomial`, `WeierstrassCurve.eval_toPoly_twoTorsionPolynomial`,
-`WeierstrassCurve.Affine.Point.isRoot_twoTorsionPolynomial_of_add_self` and
-`WeierstrassCurve.Affine.Point.isRoot_twoTorsionPolynomial_iff`
-(see `Mathlib/AlgebraicGeometry/EllipticCurve/Weierstrass.lean` and `.../Affine/Point.lean`).
-For the short form the polynomial evaluates to `4 · (x³ + a·x + b)`, so the equivalence
-with `x³ + a·x + b = 0` follows (characteristic `≠ 2` makes the factor `4` nonzero).
-
-The explicit instance below (over `ℚ`, curve `y² = x³ - x`) exhibits the four
-2-torsion points `O, (0,0), (1,0), (-1,0)` and shows they exhaust all of them.
-No `sorry`, no invented lemmas.
--/
 import Mathlib.AlgebraicGeometry.EllipticCurve.Affine.Point
 
 namespace GoldbachChallenge
@@ -30,20 +9,15 @@ open WeierstrassCurve.Affine.Point
 
 variable {F : Type*} [Field F] [DecidableEq F]
 
-/-- The short Weierstrass curve `y² = x³ + a·x + b`, i.e. `a₁ = a₂ = a₃ = 0`,
-`a₄ = a`, `a₆ = b`. -/
 noncomputable def shortW (a b : F) : WeierstrassCurve F :=
   { a₁ := 0, a₂ := 0, a₃ := 0, a₄ := a, a₆ := b }
 
-/-- On the short form, the 2-torsion polynomial evaluates to `4 · (x³ + a·x + b)`. -/
 lemma eval_twoTorsion_short (a b x : F) :
     (shortW a b).twoTorsionPolynomial.toPoly.eval x = 4 * (x ^ 3 + a * x + b) := by
   rw [eval_toPoly_twoTorsionPolynomial]
   simp [shortW, b₂, b₄, b₆]
   ring
 
-/-- For `char F ≠ 2` and `Δ ≠ 0`, a nonsingular affine point `(x, y)` is 2-torsion
-(`P + P = 0`) iff `x³ + a·x + b = 0`; in that case necessarily `y = 0`. -/
 theorem twoTorsion_iff_root {a b x y : F} (h2 : NeZero (2 : F))
     (hΔ : (shortW a b).Δ ≠ 0)
     (hns : WeierstrassCurve.Affine.Nonsingular (shortW a b) x y) :
@@ -75,27 +49,21 @@ theorem twoTorsion_iff_root {a b x y : F} (h2 : NeZero (2 : F))
 
 section ShortCurveQ
 
-/-- Discriminant of `y² = x³ - x` over `ℚ` is nonzero (equal to `8` in mathlib's
-`b`-coefficient convention `Δ = b₂²·b₈ - 8·b₄³ - 27·b₆² + 9·b₂·b₄·b₆`). -/
 lemma shortQ_Δ_ne_zero : (shortW (-1 : ℚ) 0).Δ ≠ 0 := by
   norm_num [shortW, Δ, b₂, b₄, b₆, b₈]
 
-/-- `(0, 0)` is a nonsingular point of `y² = x³ - x`. -/
 lemma shortQ_ns0 : WeierstrassCurve.Affine.Nonsingular (shortW (-1 : ℚ) 0) 0 0 := by
   rw [nonsingular_iff', equation_iff]
   norm_num [shortW]
 
-/-- `(1, 0)` is a nonsingular point of `y² = x³ - x`. -/
 lemma shortQ_ns1 : WeierstrassCurve.Affine.Nonsingular (shortW (-1 : ℚ) 0) 1 0 := by
   rw [nonsingular_iff', equation_iff]
   norm_num [shortW]
 
-/-- `(-1, 0)` is a nonsingular point of `y² = x³ - x`. -/
 lemma shortQ_nsNeg1 : WeierstrassCurve.Affine.Nonsingular (shortW (-1 : ℚ) 0) (-1) 0 := by
   rw [nonsingular_iff', equation_iff]
   norm_num [shortW]
 
-/-- On `y² = x³ - x`, the `x`-coordinate of any 2-torsion point is one of `0, 1, -1`. -/
 theorem twoTorsion_x_coord_shortQ (x y : ℚ)
     (hns : WeierstrassCurve.Affine.Nonsingular (shortW (-1 : ℚ) 0) x y)
     (hP0 : WeierstrassCurve.Affine.Point.some x y hns +
@@ -113,8 +81,6 @@ theorem twoTorsion_x_coord_shortQ (x y : ℚ)
     · exact Or.inr (Or.inl (by linarith))
   · exact Or.inr (Or.inr (by linarith))
 
-/-- Explicit structure on `y² = x³ - x` over `ℚ`: the 2-torsion points are exactly
-`O, (0, 0), (1, 0), (-1, 0)`. -/
 theorem twoTorsion_set_shortQ :
     ∀ P : WeierstrassCurve.Affine.Point (shortW (-1 : ℚ) 0), P + P = 0 →
       P = 0 ∨ P = WeierstrassCurve.Affine.Point.some 0 0 shortQ_ns0 ∨

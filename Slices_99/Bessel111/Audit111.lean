@@ -1,0 +1,10 @@
+import Challenge_111_Bessel
+#print axioms Goldbach111.sieveSumOver_eq_correlation
+#print axioms Goldbach111.sieveSumOver_le_energy_mul_correlation
+#print axioms Goldbach111.large_sieve_sharp_of_correlation_bound
+#print axioms Goldbach111.besselResidualGap_of_correlation_bound
+#print axioms Goldbach111.pairCorrelation_self
+#print axioms Goldbach111.sum_pairCorrelation_self
+#print axioms Goldbach111.fareyPoints_one_subset
+#print axioms Goldbach111.besselResidualGap_Q_one
+#print axioms Goldbach111.slice111_status

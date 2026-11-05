@@ -5,17 +5,7 @@ import Mathlib.Analysis.Meromorphic.Order
 import Mathlib.Analysis.Complex.RemovableSingularity
 import Mathlib.Topology.Piecewise
 
-/-!
-# 完备 Dirichlet L 函数：函数方程与亚纯性（单文件独立验证）
-
-独立命题：
-1. 对任意模 N 的本原 Dirichlet 特征 χ，其完备 L 函数满足函数方程
-   `completedLFunction χ s = rootNumber χ · completedLFunction χ̄ (1 - s)`
-   （mathlib 中本原特征版本含因子 `N^(1/2 - s)`；模 1 时退化为上述用户原式）。
-2. `completedLFunction` 在复平面亚纯，其极点位置由 Γ 因子与 L 函数的极点共同决定。
-
-全部证明只使用 mathlib 现成引理，不使用 `sorry`，不新增自造假引理。
--/
+/-! # CompletedLFunctionFE — 完备化 L 函数解析性 / 函数方程（ChenGuang Studio） -/
 
 noncomputable section
 open scoped Topology
@@ -23,11 +13,6 @@ open Complex Filter
 
 namespace DirichletCharacter
 
--- =====================================================================
--- 第 0 节：LFunction 在 s = 1 处亚纯（切片 A 已交付结论，内联以备独立运行）
--- =====================================================================
-
-/-- 任意特征（含平凡特征）在 `s ≠ 1` 处局部解析。 -/
 lemma LFunction_analyticAt_of_ne_one {N : ℕ} [NeZero N] (χ : DirichletCharacter ℂ N)
     {s : ℂ} (hs : s ≠ 1) :
     AnalyticAt ℂ (LFunction χ) s := by
@@ -35,18 +20,15 @@ lemma LFunction_analyticAt_of_ne_one {N : ℕ} [NeZero N] (χ : DirichletCharact
     fun z hz => (differentiableAt_LFunction χ z (Or.inl hz)).differentiableWithinAt
   exact hd.analyticAt (isOpen_ne.mem_nhds hs)
 
-/-- 非平凡特征在 `s = 1` 处无极点，全平面解析。 -/
 lemma LFunction_analyticOnNhd_of_ne_one {N : ℕ} [NeZero N] (χ : DirichletCharacter ℂ N)
     (hχ : χ ≠ 1) :
     AnalyticOnNhd ℂ (LFunction χ) Set.univ :=
   (differentiable_LFunction hχ).differentiableOn.analyticOnNhd isOpen_univ
 
-/-- 任意特征在 `s = 1` 的留数为 `∑ j, χ j / N`。 -/
 lemma LFunction_residue_one {N : ℕ} [NeZero N] (χ : DirichletCharacter ℂ N) :
     Tendsto (fun s : ℂ => (s - 1) * LFunction χ s) (𝓝[≠] 1) (𝓝 (∑ j : ZMod N, χ j / N)) := by
   simpa [LFunction] using (ZMod.LFunction_residue_one (χ : ZMod N → ℂ))
 
-/-- `LFunction` 在 `s = 1` 处亚纯。 -/
 theorem LFunction_meromorphicAt_one {N : ℕ} [NeZero N] (χ : DirichletCharacter ℂ N) :
     MeromorphicAt (LFunction χ) 1 := by
   by_cases hχ : χ ≠ 1
@@ -82,11 +64,6 @@ theorem LFunction_meromorphicAt_one {N : ℕ} [NeZero N] (χ : DirichletCharacte
     · simp only [g, Function.update_of_ne hz, f0, smul_eq_mul]
       ring
 
--- =====================================================================
--- 第 1 节：Γ 因子 gammaFactor 在 s = 1 处解析且非零（平凡特征）
--- =====================================================================
-
-/-- Gammaℝ 在 `re z > 0` 半平面上可微（π^(-z/2) 与 Γ(z/2) 的乘积）。 -/
 lemma Gammaℝ_differentiableOn_repos : DifferentiableOn ℂ Gammaℝ {z | 0 < z.re} := by
   intro z hz
   have h1 : DifferentiableAt ℂ (fun z : ℂ => (Real.pi : ℂ) ^ (-z / 2)) z :=
@@ -111,7 +88,6 @@ lemma Gammaℝ_differentiableOn_repos : DifferentiableOn ℂ Gammaℝ {z | 0 < z
       simp [Gammaℝ_def])
   exact h.differentiableWithinAt
 
-/-- gammaFactor 在 `s = 1` 处解析（Γ 因子无极点，是整函数的平移/组合）。 -/
 lemma gammaFactor_analyticAt_one {N : ℕ} [NeZero N] (χ : DirichletCharacter ℂ N) :
     AnalyticAt ℂ (gammaFactor χ) 1 := by
   by_cases hEven : χ.Even
@@ -145,7 +121,6 @@ lemma gammaFactor_analyticAt_one {N : ℕ} [NeZero N] (χ : DirichletCharacter �
         ((isOpen_lt continuous_const (continuous_re.add continuous_const)).mem_nhds
           (by norm_num : (0 : ℝ) < (1 : ℂ).re + 1)))
 
-/-- 平凡特征的 Γ 因子在 `s = 1` 处非零（Gammaℝ 1 = 1）。 -/
 lemma gammaFactor_one_ne_zero {N : ℕ} [NeZero N] :
     gammaFactor (1 : DirichletCharacter ℂ N) 1 ≠ 0 := by
   have hEven : (1 : DirichletCharacter ℂ N).Even := by
@@ -155,12 +130,6 @@ lemma gammaFactor_one_ne_zero {N : ℕ} [NeZero N] :
   rw [Complex.Gammaℝ_one]
   norm_num
 
--- =====================================================================
--- 第 2 节：分解式 completedLFunction = LFunction · gammaFactor
--- =====================================================================
-
-/-- 在 Γ 因子非零处，完备 L 函数恰为 L 函数与 Γ 因子的乘积：
-故其局部性质（极点）由 L 函数的极点与 Γ 因子共同决定。 -/
 lemma completedLFunction_eq_mul_gammaFactor {N : ℕ} [NeZero N]
     (χ : DirichletCharacter ℂ N) {s : ℂ} (hs : s ≠ 0 ∨ N ≠ 1) (hg : gammaFactor χ s ≠ 0) :
     completedLFunction χ s = LFunction χ s * gammaFactor χ s := by
@@ -168,12 +137,6 @@ lemma completedLFunction_eq_mul_gammaFactor {N : ℕ} [NeZero N]
   rw [hL]
   rw [div_mul_cancel₀ _ hg]
 
--- =====================================================================
--- 第 3 节：completedLFunction 在复平面亚纯，且极点位置由 L 函数极点决定
--- =====================================================================
-
-/-- 内联：`completedRiemannZeta` 在 `0` 处亚纯（ZetaCompletedFE 结论，由 mathlib 引理推出）。
-分解式 `Λ = Λ₀ - 1/z - 1/(1-z)` 中两个极项给出 `s = 0` 处的极点。 -/
 lemma meromorphicAt_completedRiemannZeta_zero : MeromorphicAt completedRiemannZeta 0 := by
   have hΛ₀ : MeromorphicAt (fun z : ℂ => completedRiemannZeta₀ z) 0 :=
     (differentiable_completedZeta₀).analyticAt 0 |>.meromorphicAt
@@ -190,8 +153,6 @@ lemma meromorphicAt_completedRiemannZeta_zero : MeromorphicAt completedRiemannZe
   filter_upwards with z
   simp [completedRiemannZeta_eq]
 
-/-- 无极点区域：在 `s ≠ 1 ∨ χ ≠ 1` 且 `s ≠ 0 ∨ N ≠ 1` 处 completedLFunction 解析。
-（即极点只可能出现在平凡特征的 `s = 1` 处，或模 1 平凡特征的 `s = 0` 处。） -/
 theorem completedLFunction_analyticAt {N : ℕ} [NeZero N] (χ : DirichletCharacter ℂ N) {s : ℂ}
     (hs : s ≠ 1 ∨ χ ≠ 1) (hs0 : s ≠ 0 ∨ N ≠ 1) :
     AnalyticAt ℂ (completedLFunction χ) s := by
@@ -217,9 +178,6 @@ theorem completedLFunction_analyticAt {N : ℕ} [NeZero N] (χ : DirichletCharac
           (Or.inr hN) (Or.inl hz)).differentiableWithinAt
       exact hd.analyticAt (isOpen_ne.mem_nhds hs1)
 
-/-- completedLFunction 在复平面上处处亚纯。
-平凡特征的 `s = 1` 极点来自 L 函数（单极点）乘 Γ 因子（解析非零）；
-其余位置解析。 -/
 theorem completedLFunction_meromorphicAt {N : ℕ} [NeZero N] (χ : DirichletCharacter ℂ N) (s : ℂ) :
     MeromorphicAt (completedLFunction χ) s := by
   by_cases hχ : χ ≠ 1
@@ -256,12 +214,6 @@ theorem completedLFunction_meromorphicAt {N : ℕ} [NeZero N] (χ : DirichletCha
         · exact (completedLFunction_analyticAt (1 : DirichletCharacter ℂ N) (Or.inl hs1)
             (Or.inr hN)).meromorphicAt
 
--- =====================================================================
--- 第 4 节：函数方程 completedLFunction χ s = rootNumber χ · completedLFunction χ̄ (1-s)
--- =====================================================================
-
-/-- 主定理：对任意模 N 的本原 Dirichlet 特征 χ，
-`completedLFunction χ s = N^(1/2 - s) * rootNumber χ * completedLFunction χ̄ (1 - s)`。 -/
 theorem completedLFunction_functional_equation
     {N : ℕ} [NeZero N] {χ : DirichletCharacter ℂ N} (hχ : IsPrimitive χ) (s : ℂ) :
     completedLFunction χ s = (N : ℂ) ^ (1 / 2 - s) * rootNumber χ *
@@ -272,8 +224,6 @@ theorem completedLFunction_functional_equation
   rw [← MulChar.star_eq_inv] at h1
   exact h1
 
-/-- 模 1 时 `N^(1/2 - s) = 1`，即退化为用户原式：
-`completedLFunction χ s = rootNumber χ · completedLFunction χ̄ (1 - s)`。 -/
 theorem completedLFunction_functional_equation_modOne
     {χ : DirichletCharacter ℂ 1} (hχ : IsPrimitive χ) (s : ℂ) :
     completedLFunction χ s = rootNumber χ * completedLFunction (star χ) (1 - s) := by
@@ -281,10 +231,6 @@ theorem completedLFunction_functional_equation_modOne
   rw [show (↑(1 : ℕ) : ℂ) = (1 : ℂ) by norm_num] at h1
   rw [Complex.one_cpow] at h1
   simpa [one_mul] using h1
-
--- =====================================================================
--- 公理审计
--- =====================================================================
 
 #print axioms completedLFunction_functional_equation
 #print axioms completedLFunction_functional_equation_modOne

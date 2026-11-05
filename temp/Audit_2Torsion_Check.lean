@@ -1,0 +1,8 @@
+import Mathlib.AlgebraicGeometry.EllipticCurve.Affine.Point
+import Mathlib.Algebra.Group.Subgroup.Basic
+import Challenge_2Torsion_General
+#print axioms GoldbachChallenge.twoTorsion_iff_root
+#print axioms GoldbachChallenge.twoTorsion_add
+#print axioms GoldbachChallenge.twoTorsion_neg
+#print axioms GoldbachChallenge.twoTorsion_zero
+#print axioms GoldbachChallenge.twoTorSub_equiv_rootSub_plus_O

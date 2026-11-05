@@ -7,19 +7,9 @@ open scoped Topology
 
 namespace ZetaCompletedFE
 
--- =====================================================================
--- 定理 A：completedRiemannZeta 满足函数方程
---   completedRiemannZeta (1 - s) = completedRiemannZeta s
--- =====================================================================
-
 theorem completedRiemannZeta_functional_equation (s : ℂ) :
     completedRiemannZeta (1 - s) = completedRiemannZeta s :=
   completedRiemannZeta_one_sub s
-
--- =====================================================================
--- 预备：completedRiemannZeta₀ 是整函数，在 0、1 处解析
--- 分解式：Λ s = Λ₀ s - 1/s - 1/(1-s)
--- =====================================================================
 
 lemma completedZeta₀_analyticAt_zero : AnalyticAt ℂ completedRiemannZeta₀ 0 :=
   (differentiable_completedZeta₀).analyticAt 0
@@ -51,10 +41,6 @@ lemma completedRiemannZeta_decomp_one :
       (fun z => completedRiemannZeta₀ z - 1 / z - 1 / (1 - z)) := by
   filter_upwards with z
   rw [completedRiemannZeta_eq]
-
--- =====================================================================
--- 定理 B：completedRiemannZeta 在 s = 0 处亚纯，且为单极点
--- =====================================================================
 
 theorem meromorphicAt_completedRiemannZeta_zero :
     MeromorphicAt completedRiemannZeta 0 := by
@@ -111,10 +97,6 @@ theorem completedRiemannZeta_simple_pole_zero :
     ring_nf
   rw [← meromorphicOrderAt_congr hfg]
   exact hsum
-
--- =====================================================================
--- 定理 C：completedRiemannZeta 在 s = 1 处亚纯，且为单极点
--- =====================================================================
 
 theorem meromorphicAt_completedRiemannZeta_one :
     MeromorphicAt completedRiemannZeta 1 := by
@@ -176,10 +158,6 @@ theorem completedRiemannZeta_simple_pole_one :
   rw [← meromorphicOrderAt_congr hfg]
   exact hsum
 
--- =====================================================================
--- 定理 D：留数——s = 0 处留数为 -1（s = 1 处留数为 1，mathlib 已证）
--- =====================================================================
-
 theorem completedRiemannZeta_residue_zero :
     Tendsto (fun z : ℂ => z * completedRiemannZeta z) (𝓝[≠] 0) (𝓝 (-1)) := by
   have hdecomp : (fun z : ℂ => z * completedRiemannZeta z) =ᶠ[𝓝[≠] 0]
@@ -213,10 +191,6 @@ theorem completedRiemannZeta_residue_zero :
     hmid.sub hz1
   simpa using hfin
 
--- =====================================================================
--- 汇总命题
--- =====================================================================
-
 theorem completedRiemannZeta_functional_equation_and_poles :
     (∀ s : ℂ, completedRiemannZeta (1 - s) = completedRiemannZeta s) ∧
     meromorphicOrderAt completedRiemannZeta 0 = ((-1 : ℤ) : WithTop ℤ) ∧
@@ -228,7 +202,6 @@ theorem completedRiemannZeta_functional_equation_and_poles :
 
 end ZetaCompletedFE
 
--- 公理审计
 #print axioms ZetaCompletedFE.completedRiemannZeta_functional_equation
 #print axioms ZetaCompletedFE.completedRiemannZeta_simple_pole_zero
 #print axioms ZetaCompletedFE.completedRiemannZeta_simple_pole_one
@@ -236,4 +209,3 @@ end ZetaCompletedFE
 #print axioms ZetaCompletedFE.meromorphicAt_completedRiemannZeta_one
 #print axioms ZetaCompletedFE.completedRiemannZeta_residue_zero
 #print axioms ZetaCompletedFE.completedRiemannZeta_functional_equation_and_poles
-

@@ -1,26 +1,12 @@
 import Mathlib.Analysis.PSeriesComplex
 import Mathlib.NumberTheory.LSeries.RiemannZeta
 
-/-!
-# Slice 005 : The Dirichlet eta function and the Riemann zeta function
-
-We verify the classical functional relation, valid for `Re s > 1`,
-
-    eta (s) = (1 - 2 ^ (1 - s)) * zeta (s),
-
-where `eta` is the alternating series with terms `(-1)^n / (n+1)^s` and
-`zeta` is the Riemann zeta function.
-
-All statements are derived from existing mathlib lemmas; no axioms are
-introduced and no `sorry` is used.
--/
+/-! # Zeta_Slice_005 — Dirichlet η 与 ζ 的解析延拓关系（ChenGuang Studio） -/
 
 noncomputable section
 
 namespace Slice005
 
-/-- The Dirichlet eta function, defined by the alternating series
-`sum (-1)^n / (n+1)^s`. -/
 def dirichletEta (s : Complex) : Complex :=
   tsum (fun n : Nat => (-1 : Complex) ^ n / (n + 1 : Complex) ^ s)
 
@@ -39,8 +25,6 @@ lemma summable_alt {s : Complex} (hs : 1 < s.re) :
   rw [norm_div, norm_div, norm_pow]
   norm_num
 
-/-- Splitting an alternating series into its even/odd parts:
-`sum (-1)^n * f n = sum f n - 2 * sum f (2k+1)`, for a summable family `f`. -/
 lemma tsum_alt_split {f : Nat -> Complex} (hf : Summable (fun n : Nat => norm (f n))) :
     (tsum (fun n : Nat => (-1 : Complex) ^ n * f n)) =
       tsum (fun n : Nat => f n) - 2 * tsum (fun n : Nat => f (2 * n + 1)) := by
@@ -108,13 +92,10 @@ lemma tsum_alt_split {f : Nat -> Complex} (hf : Summable (fun n : Nat => norm (f
   rw [hsub]
   ring
 
-/-- The Riemann zeta function on the half-plane `Re s > 1` is the Dirichlet series
-`sum 1 / (n+1)^s`. -/
 lemma zeta_shift_eq {s : Complex} (hs : 1 < s.re) :
     (tsum (fun n : Nat => 1 / (n + 1 : Complex) ^ s)) = riemannZeta s := by
   exact (zeta_eq_tsum_one_div_nat_add_one_cpow hs).symm
 
-/-- `eta (s) = (1 - 2 ^ (1 - s)) * zeta (s)` for `Re s > 1`. -/
 theorem eta_eq_one_sub_two_zeta {s : Complex} (hs : 1 < s.re) :
     dirichletEta s = (1 - 2 ^ (1 - s)) * riemannZeta s := by
   unfold dirichletEta

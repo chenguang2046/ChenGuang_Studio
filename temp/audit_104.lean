@@ -1,0 +1,9 @@
+import Slices_99.Challenge_104_Gamma0_Dimension
+open Challenge104Gamma0Dimension
+
+#print axioms dimension_formula
+#print axioms cuspForm_finiteDimensional
+#print axioms cuspForm_weight_zero_finrank_zero
+#check @dimension_formula
+#check @cuspForm_weight_zero_finrank_zero
+#check @sturm_bound_general
