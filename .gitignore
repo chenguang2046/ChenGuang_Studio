@@ -1,0 +1,19 @@
+# build artifacts
+.lake/
+build/
+*.olean
+*.ilean
+*.olean.hash
+*.ilean.hash
+
+# logs & temp files (never commit)
+*.log
+*.tmp
+*.out
+temp_*
+audit_*
+
+# local environment files
+*.local
+.DS_Store
+Thumbs.db
